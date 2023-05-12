@@ -28,7 +28,7 @@ class Messenger(object):
 
         try:
             resp = requests.get(
-                'https://sc.ftqq.com/{}.send?text={}&desp={}'.format(self.sc_key, text, desp)
+                f'https://sc.ftqq.com/{self.sc_key}.send?text={text}&desp={desp}'
             )
             resp_json = json.loads(resp.text)
             if resp_json.get('errno') == 0:

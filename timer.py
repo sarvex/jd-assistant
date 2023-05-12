@@ -14,7 +14,7 @@ class Timer(object):
         self.sleep_interval = sleep_interval
 
     def start(self):
-        logger.info('正在等待到达设定时间:%s' % self.buy_time)
+        logger.info(f'正在等待到达设定时间:{self.buy_time}')
         now_time = datetime.now
         while True:
             if now_time() >= self.buy_time:

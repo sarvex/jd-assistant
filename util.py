@@ -87,7 +87,7 @@ def encrypt_pwd(password, public_key=RSA_PUBLIC_KEY):
 
 
 def encrypt_payment_pwd(payment_pwd):
-    return ''.join(['u3' + x for x in payment_pwd])
+    return ''.join([f'u3{x}' for x in payment_pwd])
 
 
 def response_status(resp):
@@ -99,15 +99,14 @@ def response_status(resp):
 
 def open_image(image_file):
     if os.name == "nt":
-        os.system('start ' + image_file)  # for Windows
-    else:
-        if os.uname()[0] == "Linux":
-            if "deepin" in os.uname()[2]:
-                os.system("deepin-image-viewer " + image_file)  # for deepin
-            else:
-                os.system("eog " + image_file)  # for Linux
+        os.system(f'start {image_file}')
+    elif os.uname()[0] == "Linux":
+        if "deepin" in os.uname()[2]:
+            os.system(f"deepin-image-viewer {image_file}")
         else:
-            os.system("open " + image_file)  # for Mac
+            os.system(f"eog {image_file}")
+    else:
+        os.system(f"open {image_file}")
 
 
 def save_image(resp, image_file):
@@ -123,10 +122,7 @@ def parse_json(s):
 
 
 def get_tag_value(tag, key='', index=0):
-    if key:
-        value = tag[index].get(key)
-    else:
-        value = tag[index].text
+    value = tag[index].get(key) if key else tag[index].text
     return value.strip(' \t\r\n')
 
 
@@ -160,7 +156,7 @@ def parse_sku_id(sku_ids):
         return sku_ids
 
     sku_id_list = list(filter(bool, map(lambda x: x.strip(), sku_ids.split(','))))
-    result = dict()
+    result = {}
     for item in sku_id_list:
         if ':' in item:
             sku_id, count = map(lambda x: x.strip(), item.split(':'))

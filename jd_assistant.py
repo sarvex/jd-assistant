@@ -52,12 +52,12 @@ class Assistant(object):
         self.send_message = global_config.getboolean('messenger', 'enable')
         self.messenger = Messenger(global_config.get('messenger', 'sckey')) if self.send_message else None
 
-        self.item_cat = dict()
-        self.item_vender_ids = dict()  # 记录商家id
+        self.item_cat = {}
+        self.item_vender_ids = {}
 
-        self.seckill_init_info = dict()
-        self.seckill_order_data = dict()
-        self.seckill_url = dict()
+        self.seckill_init_info = {}
+        self.seckill_order_data = {}
+        self.seckill_url = {}
 
         self.username = ''
         self.nick_name = ''
@@ -69,11 +69,14 @@ class Assistant(object):
             pass
 
     def _load_cookies(self):
-        cookies_file = ''
-        for name in os.listdir('./cookies'):
-            if name.endswith('.cookies'):
-                cookies_file = './cookies/{0}'.format(name)
-                break
+        cookies_file = next(
+            (
+                './cookies/{0}'.format(name)
+                for name in os.listdir('./cookies')
+                if name.endswith('.cookies')
+            ),
+            '',
+        )
         with open(cookies_file, 'rb') as f:
             local_cookies = pickle.load(f)
         self.sess.cookies.update(local_cookies)
@@ -151,8 +154,7 @@ class Assistant(object):
 
     def _get_login_page(self):
         url = "https://passport.jd.com/new/login.aspx"
-        page = self.sess.get(url, headers=self.headers)
-        return page
+        return self.sess.get(url, headers=self.headers)
 
     @deprecated
     def _get_login_data(self):
@@ -276,7 +278,7 @@ class Assistant(object):
         url = 'https://qr.m.jd.com/check'
         payload = {
             'appid': '133',
-            'callback': 'jQuery{}'.format(random.randint(1000000, 9999999)),
+            'callback': f'jQuery{random.randint(1000000, 9999999)}',
             'token': self.sess.cookies.get('wlfstk_smdl'),
             '_': str(int(time.time() * 1000)),
         }
@@ -312,9 +314,8 @@ class Assistant(object):
         resp_json = json.loads(resp.text)
         if resp_json['returnCode'] == 0:
             return True
-        else:
-            logger.info(resp_json)
-            return False
+        logger.info(resp_json)
+        return False
 
     def login_by_QRcode(self):
         """二维码登陆
@@ -358,13 +359,13 @@ class Assistant(object):
         }
         headers = {
             'User-Agent': self.user_agent,
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
         resp = self.sess.get(url=url, params=payload, headers=headers)
         resp_json = parse_json(resp.text)
         # {"type":"1","hasAddress":false,"riskCheck":"0","flag":false,"num":941723,"stime":"2018-10-12 12:40:00","plusEtime":"","qiangEtime":"","showPromoPrice":"0","qiangStime":"","state":2,"sku":100000287121,"info":"\u9884\u7ea6\u8fdb\u884c\u4e2d","isJ":0,"address":"","d":48824,"hidePrice":"0","yueEtime":"2018-10-19 15:01:00","plusStime":"","isBefore":0,"url":"//yushou.jd.com/toYuyue.action?sku=100000287121&key=237af0174f1cffffd227a2f98481a338","etime":"2018-10-19 15:01:00","plusD":48824,"category":"4","plusType":0,"yueStime":"2018-10-12 12:40:00"};
         reserve_url = resp_json.get('url')
-        return 'https:' + reserve_url if reserve_url else None
+        return f'https:{reserve_url}' if reserve_url else None
 
     @check_login
     def make_reserve(self, sku_id):
@@ -378,7 +379,7 @@ class Assistant(object):
             return
         headers = {
             'User-Agent': self.user_agent,
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
         resp = self.sess.get(url=reserve_url, headers=headers)
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -393,7 +394,7 @@ class Assistant(object):
         """
         url = 'https://passport.jd.com/user/petName/getUserInfoForMiniJd.action'
         payload = {
-            'callback': 'jQuery{}'.format(random.randint(1000000, 9999999)),
+            'callback': f'jQuery{random.randint(1000000, 9999999)}',
             '_': str(int(time.time() * 1000)),
         }
         headers = {
@@ -414,9 +415,8 @@ class Assistant(object):
         :param sku_id: 商品id
         :return: 响应
         """
-        url = 'https://item.jd.com/{}.html'.format(sku_id)
-        page = requests.get(url=url, headers=self.headers)
-        return page
+        url = f'https://item.jd.com/{sku_id}.html'
+        return requests.get(url=url, headers=self.headers)
 
     def get_single_item_stock(self, sku_id, num, area):
         """获取单个商品库存状态
@@ -432,11 +432,11 @@ class Assistant(object):
         if not cat:
             page = self._get_item_detail_page(sku_id)
             match = re.search(r'cat: \[(.*?)\]', page.text)
-            cat = match.group(1)
+            cat = match[1]
             self.item_cat[sku_id] = cat
 
             match = re.search(r'venderId:(\d*?),', page.text)
-            vender_id = match.group(1)
+            vender_id = match[1]
             self.item_vender_ids[sku_id] = vender_id
 
         url = 'https://c0.3.cn/stock'
@@ -446,14 +446,14 @@ class Assistant(object):
             'area': area_id,
             'ch': 1,
             '_': str(int(time.time() * 1000)),
-            'callback': 'jQuery{}'.format(random.randint(1000000, 9999999)),
-            'extraParam': '{"originid":"1"}',  # get error stock state without this param
-            'cat': cat,  # get 403 Forbidden without this param (obtained from the detail page)
-            'venderId': vender_id  # return seller information with this param (can't be ignored)
+            'callback': f'jQuery{random.randint(1000000, 9999999)}',
+            'extraParam': '{"originid":"1"}',
+            'cat': cat,
+            'venderId': vender_id,
         }
         headers = {
             'User-Agent': self.user_agent,
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
 
         resp_text = ''
@@ -493,7 +493,7 @@ class Assistant(object):
             'User-Agent': self.user_agent,
             'Origin': 'https://trade.jd.com',
             'Content-Type': 'application/json; charset=UTF-8',
-            'Referer': 'https://trade.jd.com/shopping/order/getOrderInfo.action?rid=' + str(int(time.time() * 1000)),
+            'Referer': f'https://trade.jd.com/shopping/order/getOrderInfo.action?rid={int(time.time() * 1000)}',
         }
         data = {
             "areaRequest": {
@@ -518,7 +518,7 @@ class Assistant(object):
             logger.error('查询 %s 库存信息超时(%ss)', list(items_dict.keys()), self.timeout)
             return False
         except requests.exceptions.RequestException as e:
-            raise AsstException('查询 %s 库存信息异常：%s' % (list(items_dict.keys()), e))
+            raise AsstException(f'查询 {list(items_dict.keys())} 库存信息异常：{e}')
 
         resp_json = parse_json(resp.text)
         result = resp_json.get('result')
@@ -546,11 +546,11 @@ class Assistant(object):
 
         url = 'https://c0.3.cn/stocks'
         payload = {
-            'callback': 'jQuery{}'.format(random.randint(1000000, 9999999)),
+            'callback': f'jQuery{random.randint(1000000, 9999999)}',
             'type': 'getstocks',
             'skuIds': ','.join(items_dict.keys()),
             'area': area_id,
-            '_': str(int(time.time() * 1000))
+            '_': str(int(time.time() * 1000)),
         }
         headers = {
             'User-Agent': self.user_agent
@@ -565,9 +565,8 @@ class Assistant(object):
                 stock_state = info.get('StockState')  # 商品库存状态
                 if sku_state == 1 and stock_state in (33, 40):
                     continue
-                else:
-                    stock = False
-                    break
+                stock = False
+                break
             return stock
         except requests.exceptions.Timeout:
             logger.error('查询 %s 库存信息超时(%ss)', list(items_dict.keys()), self.timeout)
@@ -613,7 +612,7 @@ class Assistant(object):
         payload = {
             'type': 1,
             'pduid': int(time.time() * 1000),
-            'skuIds': 'J_' + sku_id,
+            'skuIds': f'J_{sku_id}',
         }
         resp = self.sess.get(url=url, params=payload)
         return parse_json(resp.text).get('p')
@@ -694,7 +693,7 @@ class Assistant(object):
         resp = self.sess.get(url)
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        cart_detail = dict()
+        cart_detail = {}
         for item in soup.find_all(class_='item-item'):
             try:
                 sku_id = item['skuid']  # 商品id
@@ -917,9 +916,7 @@ class Assistant(object):
             'submitOrderParam.needCheck': 1,
         }
 
-        # add payment password when necessary
-        payment_pwd = global_config.get('account', 'payment_pwd')
-        if payment_pwd:
+        if payment_pwd := global_config.get('account', 'payment_pwd'):
             data['submitOrderParam.payPassword'] = encrypt_payment_pwd(payment_pwd)
 
         headers = {
@@ -946,17 +943,17 @@ class Assistant(object):
                 order_id = resp_json.get('orderId')
                 logger.info('订单提交成功! 订单号：%s', order_id)
                 if self.send_message:
-                    self.messenger.send(text='jd-assistant 订单提交成功', desp='订单号：%s' % order_id)
+                    self.messenger.send(text='jd-assistant 订单提交成功', desp=f'订单号：{order_id}')
                 return True
             else:
                 message, result_code = resp_json.get('message'), resp_json.get('resultCode')
                 if result_code == 0:
                     self._save_invoice()
-                    message = message + '(下单商品可能为第三方商品，将切换为普通发票进行尝试)'
+                    message = f'{message}(下单商品可能为第三方商品，将切换为普通发票进行尝试)'
                 elif result_code == 60077:
-                    message = message + '(可能是购物车为空 或 未勾选购物车中商品)'
+                    message = f'{message}(可能是购物车为空 或 未勾选购物车中商品)'
                 elif result_code == 60123:
-                    message = message + '(需要在config.ini文件中配置支付密码)'
+                    message = f'{message}(需要在config.ini文件中配置支付密码)'
                 logger.info('订单提交失败, 错误码：%s, 返回信息：%s', result_code, message)
                 logger.info(resp_json)
                 return False
@@ -1058,16 +1055,15 @@ class Assistant(object):
                 # get sum_price, pay_method
                 sum_price = ''
                 pay_method = ''
-                amount_div = table_body.find('div', {'class': 'amount'})
-                if amount_div:
+                if amount_div := table_body.find('div', {'class': 'amount'}):
                     spans = amount_div.select('span')
                     pay_method = get_tag_value(spans, index=1)
                     # if the order is waiting for payment, the price after the discount is shown.
                     sum_price = get_tag_value(amount_div.select('strong'), index=1)[1:] if wait_payment \
-                        else get_tag_value(spans, index=0)[4:]
+                            else get_tag_value(spans, index=0)[4:]
 
                 # get name and quantity of items in order
-                items_dict = dict()  # {'item_id_1': quantity_1, 'item_id_2': quantity_2, ...}
+                items_dict = {}
                 tr_bds = table_body.select('tr.tr-bd')
                 for tr_bd in tr_bds:
                     item = tr_bd.find('div', {'class': 'goods-item'})
@@ -1098,7 +1094,7 @@ class Assistant(object):
         """
         url = 'https://itemko.jd.com/itemShowBtn'
         payload = {
-            'callback': 'jQuery{}'.format(random.randint(1000000, 9999999)),
+            'callback': f'jQuery{random.randint(1000000, 9999999)}',
             'skuId': sku_id,
             'from': 'pc',
             '_': str(int(time.time() * 1000)),
@@ -1106,7 +1102,7 @@ class Assistant(object):
         headers = {
             'User-Agent': self.user_agent,
             'Host': 'itemko.jd.com',
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
         retry_interval = 0.5
 
@@ -1135,7 +1131,7 @@ class Assistant(object):
         headers = {
             'User-Agent': self.user_agent,
             'Host': 'marathon.jd.com',
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
         self.sess.get(url=self.seckill_url.get(sku_id), headers=headers, allow_redirects=False)
 
@@ -1155,7 +1151,7 @@ class Assistant(object):
         headers = {
             'User-Agent': self.user_agent,
             'Host': 'marathon.jd.com',
-            'Referer': 'https://item.jd.com/{}.html'.format(sku_id),
+            'Referer': f'https://item.jd.com/{sku_id}.html',
         }
         self.sess.get(url=url, params=payload, headers=headers)
 
@@ -1196,11 +1192,13 @@ class Assistant(object):
         invoice_info = init_info.get('invoiceInfo', {})  # 默认发票信息dict, 有可能不返回
         token = init_info['token']
 
-        data = {
+        return {
             'skuId': sku_id,
             'num': num,
             'addressId': default_address['id'],
-            'yuShou': str(bool(int(init_info['seckillSkuVO']['extMap'].get('YuShou', '0')))).lower(),
+            'yuShou': str(
+                bool(int(init_info['seckillSkuVO']['extMap'].get('YuShou', '0')))
+            ).lower(),
             'isModifyAddress': 'false',
             'name': default_address['name'],
             'provinceId': default_address['provinceId'],
@@ -1229,9 +1227,8 @@ class Assistant(object):
             'eid': self.eid,
             'fp': self.fp,
             'token': token,
-            'pru': ''
+            'pru': '',
         }
-        return data
 
     @deprecated
     def submit_seckill_order(self, sku_id, num=1):
@@ -1306,9 +1303,8 @@ class Assistant(object):
 
             if self.submit_seckill_order(sku_id, num):
                 return True
-            else:
-                logger.info('休息%ss', interval)
-                time.sleep(interval)
+            logger.info('休息%ss', interval)
+            time.sleep(interval)
         else:
             logger.info('执行结束，抢购%s失败！', sku_id)
             return False

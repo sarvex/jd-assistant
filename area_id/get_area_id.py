@@ -35,7 +35,7 @@ def get_area_by_id(_id):
 
 def print_area(area_list):
     for area in area_list:
-        print('【{}】 {}'.format(area['id'], area['name']))
+        print(f"【{area['id']}】 {area['name']}")
     print('-------------------------------------------------')
 
 
@@ -46,7 +46,7 @@ def select_area(area_list):
         if not selected_area:
             print('编号错误，请重新输入')
             continue
-        print('已选择：{}'.format(selected_area[0]['name']))
+        print(f"已选择：{selected_area[0]['name']}")
         return selected_area[0]
 
 
@@ -65,20 +65,14 @@ def main():
     streets = get_area_by_id(district['id'])
     if not streets:
         print(
-            '您选择的区域为：{}-{}-{}，id：{}_{}_{}'.format(
-                province['name'], city['name'], district['name'],
-                province['id'], city['id'], district['id']
-            )
+            f"您选择的区域为：{province['name']}-{city['name']}-{district['name']}，id：{province['id']}_{city['id']}_{district['id']}"
         )
         return
 
     print_area(streets)
     street = select_area(streets)
     print(
-        '您选择的区域为：{}-{}-{}-{}，id：{}_{}_{}_{}'.format(
-            province['name'], city['name'], district['name'], street['name'],
-            province['id'], city['id'], district['id'], street['id']
-        )
+        f"您选择的区域为：{province['name']}-{city['name']}-{district['name']}-{street['name']}，id：{province['id']}_{city['id']}_{district['id']}_{street['id']}"
     )
 
 
